@@ -1,10 +1,18 @@
 # Make includes: include.mk
 
-This is a collection of `make` includes I've put together.
+This is manual fork of [a collection of `make` includes](https://github.com/smaslennikov/include.mk). It includes documentation and information internal to SADA Systems, Inc.
 
 <!-- toc -->
 
 - [Usage](#usage)
+- [Repository management](#repository-management)
+    * [Development](#development)
+- [Canned Client Documentation](#canned-client-documentation)
+    * [Secret management](#secret-management)
+        + [Recipients' public keys](#recipients-public-keys)
+    * [Requirements for working with secrets](#requirements-for-working-with-secrets)
+    * [Development with secrets](#development-with-secrets)
+    * [Leak recovery](#leak-recovery)
 - [Documentation](#documentation)
     * [Markdown](#markdown)
     * [Bastion host](#bastion-host)
@@ -27,7 +35,67 @@ An example [`Makefile`](Makefile) shows how to include this repository dynamical
 
 Of course, you'll need to change the `GITROOT` variable in your `Makefile`s: it'll likely be the same as the example, but without the trailing `../`.
 
-Feel free to either remove `.git` directory in the acquired `include.mk` or add it as a submodule and follow along for additions and fixes.
+## Repository management
+
+This is a manual fork of the [original repo](https://github.com/smaslennikov/include.mk) to allow for some flexibility:
+
+- keeping this repository private allows us to stop supporting client resources using this code at the end of an SOW,
+- including internal documentation _at the source_ but without making it public
+
+### Development
+
+To accept upstream changes:
+
+1. Add the upstream remote: `git remote add upstream git@github.com:smaslennikov/include.mk.git`
+2. Pull upstream commits, rebasing the ones here on top: `git pull upstream master --rebase`
+3. Resolve any new conflicts following `git` guidelines
+4. Force push to `sadasystems`: `git push origin master -f`
+
+## Canned Client Documentation
+
+The following are examples of docs that can be largely pasted into clients' repositories, with some modifications, comments for which are marked with `${SADA_COMMENT: }`. Be sure to fill those out before checking these in!
+
+### Secret management
+
+We currently store secrets within this repository, encrypted _to_ everyone listed [here](include.mk/90-crypt.mk) _by_ the `-u`-listed key in that same file (if `-u` flag isn't listed, your default private key is used).
+
+Secrets are [`.gitignore`](.gitignore)d; their respective `.asc`s are checked in.
+
+#### Recipients' public keys
+
+| User | Key location |
+|-|-|
+|${SADA_COMMENT: list initial set of keys here, checking public keys into `keys/` directory and linking individuals to each}| |
+| slava.maslennikov@sadasystems.com | [Keybase](https://keybase.io/smaslennikov) |
+
+### Requirements for working with secrets
+
+1. `gpg --import` public keys above
+2. Someone from the [crypt user list](include.mk/90-crypt.mk) must reencrypt all secrets to you with `make reencrypt`
+
+### Development with secrets
+
+Makefile targets are present to facilitate the business:
+
+- set the name of the secret(s) and encrypt them (for permanent secrets, the variable is set in the local Makefile): `ENCRYPTABLE=secretstuff.yaml make encrypt`
+- decrypt is just as intuitive, assuming the variable is set in the local Makefile: `make decrypt`
+- reencrypt all the secrets deeper than current directory to current recipients `make reencrypt`
+
+### Leak recovery
+
+Lost a secret?
+
+1. Regenerate the secret
+2. Run `ENCRYPTABLE=secretfile make encrypt`, setting the variable properly
+
+Leaked a key?
+
+1. Perform risk assessment: do you need to regenerate _all_ secrets? The answer is likely yes, here's an incomplete list of them:
+    - ${SADA_COMMENT: list all initial secrets here, with processes for rotating them. Use the next line as an example and remove it.}
+    - [Ansible controller's private SSH key](environments/v2-prod/secret/ssh_key.asc) used in CircleCI to execute Ansible Playbooks off it
+       1. To rotate, generate a new ssh keypair with `make generate-ssh-key`,
+       2. `terraform apply` to create the new host with the new key
+2. `make reencrypt` all secrets
 
 ## Documentation
 
