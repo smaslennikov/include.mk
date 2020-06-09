@@ -3,4 +3,4 @@
 MARKDOWN_FILE?=README.md
 
 toc:
-	markdown-toc --indent "    " -i $(MARKDOWN_FILE)
+	markdown-toc --prepend'' --indent "    " -i $(MARKDOWN_FILE)
